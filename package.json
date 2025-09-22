@@ -10,6 +10,7 @@
     "lint": "expo-module lint",
     "typecheck": "tsc --noEmit",
     "test": "expo-module test",
+    "prepare": "expo-module build",
     "prepublishOnly": "expo-module prepublishOnly && tsc",
     "expo-module": "expo-module"
   },
