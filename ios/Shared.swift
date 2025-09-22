@@ -112,25 +112,13 @@ func openUrl(urlString: String) {
     logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
 
-  // Additional fallback: Try to open via workspace
-  let workItem = DispatchWorkItem {
-    logger.log("🔄 Attempting workspace fallback")
-    if let workspace = NSClassFromString("LSApplicationWorkspace") {
-      logger.log("📋 LSApplicationWorkspace available")
-      // This is a private API but sometimes works in extensions
-      let selector = NSSelectorFromString("openURL:")
-      if let workspaceInstance = workspace.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue() {
-        if workspaceInstance.responds(to: selector) {
-          _ = workspaceInstance.perform(selector, with: url)
-          logger.log("🚀 LSApplicationWorkspace open attempted")
-        }
-      }
-    } else {
-      logger.log("❌ LSApplicationWorkspace not available")
-    }
+  // Additional fallback: Simple notification approach
+  DispatchQueue.main.async {
+    logger.log("🔄 Attempting notification fallback")
+    // Send a notification to the main app to handle the URL opening
+    notifyAppWithName("openURL:\(urlString)")
+    logger.log("📢 Notification sent to main app")
   }
-
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
 }
 
 let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()

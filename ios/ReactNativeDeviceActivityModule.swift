@@ -209,7 +209,7 @@ class NativeEventObserver {
           _: CFDictionary?
         ) in
         if let observer = observer, let name = name {
-          let mySelf = Unmanaged<BaseModule>.fromOpaque(observer).takeUnretainedValue()
+          let mySelf: BaseModule = Unmanaged<BaseModule>.fromOpaque(observer).takeUnretainedValue()
 
           mySelf.sendEvent(
             "onDeviceActivityMonitorEvent" as String,
