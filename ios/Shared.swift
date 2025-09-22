@@ -79,13 +79,20 @@ func sleep(ms: Int) {
 }
 
 func openUrl(urlString: String) {
+  logger.log("🔗 OpenURL called with: \(urlString, privacy: .public)")
+
   guard let url = URL(string: urlString) else {
+    logger.log("❌ Failed to create URL from string: \(urlString, privacy: .public)")
     return  // be safe
   }
 
-  let context = NSExtensionContext()
-  context.open(url) { _ in
+  logger.log("✅ URL created successfully: \(url, privacy: .public)")
 
+  let context = NSExtensionContext()
+  logger.log("🔧 Extension context created, attempting to open URL")
+
+  context.open(url) { success in
+    logger.log("🎯 URL open completed - success: \(success, privacy: .public)")
   }
 }
 
