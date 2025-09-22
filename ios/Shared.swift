@@ -116,7 +116,7 @@ func openUrl(urlString: String) {
   DispatchQueue.main.async {
     logger.log("🔄 Attempting notification fallback")
     // Send a notification to the main app to handle the URL opening
-    notifyAppWithName("openURL:\(urlString)")
+    notifyAppWithName(name: "openURL:\(urlString)")
     logger.log("📢 Notification sent to main app")
   }
 }
