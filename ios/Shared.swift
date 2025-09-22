@@ -88,11 +88,46 @@ func openUrl(urlString: String) {
 
   logger.log("✅ URL created successfully: \(url, privacy: .public)")
 
+  // Try UIApplication first (may not work in extensions)
+  if let application = UIApplication.value(forKeyPath: #keyPath(UIApplication.shared)) as? UIApplication {
+    logger.log("📱 Using UIApplication.shared to open URL")
+    if application.canOpenURL(url) {
+      logger.log("✅ UIApplication can open URL")
+      application.open(url) { success in
+        logger.log("🎯 UIApplication open completed - success: \(success, privacy: .public)")
+      }
+      return
+    } else {
+      logger.log("❌ UIApplication cannot open URL")
+    }
+  } else {
+    logger.log("❌ UIApplication.shared not available")
+  }
+
+  // Fallback to extension context
   let context = NSExtensionContext()
   logger.log("🔧 Extension context created, attempting to open URL")
 
   context.open(url) { success in
-    logger.log("🎯 URL open completed - success: \(success, privacy: .public)")
+    logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
+  }
+
+  // Additional fallback: Try to open via workspace
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+    logger.log("🔄 Attempting workspace fallback")
+    if let workspace = NSClassFromString("LSApplicationWorkspace") {
+      logger.log("📋 LSApplicationWorkspace available")
+      // This is a private API but sometimes works in extensions
+      let selector = NSSelectorFromString("openURL:")
+      if let workspaceInstance = workspace.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue() {
+        if workspaceInstance.responds(to: selector) {
+          _ = workspaceInstance.perform(selector, with: url)
+          logger.log("🚀 LSApplicationWorkspace open attempted")
+        }
+      }
+    } else {
+      logger.log("❌ LSApplicationWorkspace not available")
+    }
   }
 }
 
