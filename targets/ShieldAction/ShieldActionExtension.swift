@@ -16,7 +16,8 @@ func handleShieldAction(
   webdomainToken: WebDomainToken?,
   categoryToken: ActivityCategoryToken?
 ) -> ShieldActionResponse {
-  logger.log("🔥 handleAction START - config keys: \(configForSelectedAction.keys.joined(separator: ", "), privacy: .public)")
+  let configKeys = Array(configForSelectedAction.keys).joined(separator: ", ")
+  logger.log("🔥 handleAction START - config keys: \(configKeys, privacy: .public)")
 
   // Log the full config (be careful with sensitive data)
   if let configData = try? JSONSerialization.data(withJSONObject: configForSelectedAction),
@@ -25,9 +26,11 @@ func handleShieldAction(
   }
 
   if let actions = configForSelectedAction["actions"] as? [[String: Any]] {
-    logger.log("🎯 Found \(actions.count) actions to execute")
+    let actionCount = actions.count
+    logger.log("🎯 Found \(actionCount) actions to execute")
     for (index, action) in actions.enumerated() {
-      logger.log("▶️ Executing action \(index + 1)/\(actions.count): \(action, privacy: .public)")
+      let actionNumber = index + 1
+      logger.log("▶️ Executing action \(actionNumber)/\(actionCount)")
       executeGenericAction(
         action: action,
         placeholders: placeholders,
@@ -36,7 +39,7 @@ func handleShieldAction(
         webdomainToken: webdomainToken,
         categoryToken: categoryToken
       )
-      logger.log("✅ Completed action \(index + 1)")
+      logger.log("✅ Completed action \(actionNumber)")
     }
   } else {
     logger.log("❌ No actions array found in config")
@@ -130,11 +133,14 @@ func handleShieldAction(
     let url = configForSelectedAction["url"] as? String
     let deeplinkUrl = configForSelectedAction["deeplinkUrl"] as? String
 
-    logger.log("🔍 Extracted values - url: \(url ?? "nil", privacy: .public), deeplinkUrl: \(deeplinkUrl ?? "nil", privacy: .public)")
+    let urlStr = url ?? "nil"
+    let deeplinkStr = deeplinkUrl ?? "nil"
+    logger.log("🔍 Extracted values - url: \(urlStr, privacy: .public), deeplinkUrl: \(deeplinkStr, privacy: .public)")
 
     if type == "openUrl" {
-      logger.log("🌐 Executing openUrl with: \(url ?? "device-activity://", privacy: .public)")
-      openUrl(urlString: url ?? "device-activity://")
+      let openUrlStr = url ?? "device-activity://"
+      logger.log("🌐 Executing openUrl with: \(openUrlStr, privacy: .public)")
+      openUrl(urlString: openUrlStr)
       logger.log("✅ openUrl completed")
     }
 
@@ -147,9 +153,10 @@ func handleShieldAction(
 
     if type == "openUrlWithDispatch" {
       logger.log("🔄 Executing openUrlWithDispatch")
+      let dispatchUrl = url ?? "device-activity://"
       DispatchQueue.main.async(execute: {
-        logger.log("🔄 Inside dispatch queue, opening URL: \(url ?? "device-activity://", privacy: .public)")
-        openUrl(urlString: url ?? "device-activity://")
+        logger.log("🔄 Inside dispatch queue, opening URL: \(dispatchUrl, privacy: .public)")
+        openUrl(urlString: dispatchUrl)
         logger.log("✅ openUrlWithDispatch completed")
       })
     }
@@ -157,7 +164,7 @@ func handleShieldAction(
     if type == "sendNotification" {
       logger.log("🔔 Executing sendNotification")
       if let payload = configForSelectedAction["payload"] as? [String: Any] {
-        logger.log("📩 Notification payload: \(payload, privacy: .public)")
+        logger.log("📩 Notification payload found")
         sendNotification(contents: payload, placeholders: [:])
         logger.log("✅ sendNotification completed")
       } else {
@@ -204,7 +211,7 @@ func handleAction(
   webdomainToken: WebDomainToken?,
   categoryToken: ActivityCategoryToken?
 ) {
-  logger.log("🚀 HandleAction START - action: \(action, privacy: .public)")
+  logger.log("🚀 HandleAction START")
   CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication)
   logger.log("🔄 Preferences synchronized")
 
@@ -265,13 +272,14 @@ class ShieldActionExtension: ShieldActionDelegate {
     action: ShieldAction, for application: ApplicationToken,
     completionHandler: @escaping (ShieldActionResponse) -> Void
   ) {
-    logger.log("🍎 Handle Application - action: \(action, privacy: .public)")
-    logger.log("🍎 Application token: \(application, privacy: .public)")
+    logger.log("🍎 Handle Application - action received")
+    logger.log("🍎 Application token received")
 
     handleAction(
       action: action,
       completionHandler: { response in
-        logger.log("🍎 Application action completed with response: \(response, privacy: .public)")
+        let responseStr = String(describing: response)
+        logger.log("🍎 Application action completed with response: \(responseStr, privacy: .public)")
         completionHandler(response)
       },
       applicationToken: application,
@@ -284,8 +292,8 @@ class ShieldActionExtension: ShieldActionDelegate {
     action: ShieldAction, for webDomain: WebDomainToken,
     completionHandler: @escaping (ShieldActionResponse) -> Void
   ) {
-    logger.log("🌐 Handle Web Domain - action: \(action, privacy: .public)")
-    logger.log("🌐 Web domain token: \(webDomain, privacy: .public)")
+    logger.log("🌐 Handle Web Domain - action received")
+    logger.log("🌐 Web domain token received")
 
     handleAction(
       action: action,
