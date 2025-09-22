@@ -8,6 +8,48 @@
 import FamilyControls
 import ManagedSettings
 import UIKit
+import UserNotifications
+import os
+
+let logger = Logger()
+
+func sendLocalNotificationWithDeepLink(urlString: String) {
+  logger.log("📮 Creating local notification with URL: \(urlString, privacy: .public)")
+
+  let content = UNMutableNotificationContent()
+  content.title = "App Action Required"
+  content.body = "Tap to continue"
+  content.sound = .default
+
+  // Include the deep link URL in userInfo
+  content.userInfo = [
+    "deepLinkUrl": urlString,
+    "source": "shieldAction"
+  ]
+
+  // Set category for custom actions (optional)
+  content.categoryIdentifier = "DEEP_LINK_CATEGORY"
+
+  logger.log("🔔 Notification content created")
+
+  // Create immediate trigger
+  let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+
+  // Create request
+  let identifier = "deeplink_\(UUID().uuidString)"
+  let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+  logger.log("📋 Notification request created with ID: \(identifier, privacy: .public)")
+
+  // Schedule notification
+  UNUserNotificationCenter.current().add(request) { error in
+    if let error = error {
+      logger.log("❌ Failed to schedule notification: \(error.localizedDescription, privacy: .public)")
+    } else {
+      logger.log("✅ Local notification scheduled successfully")
+    }
+  }
+}
 
 func handleShieldAction(
   configForSelectedAction: [String: Any],
@@ -283,15 +325,20 @@ class ShieldActionExtension: ShieldActionDelegate {
     logger.log("🍎 Application token received")
 
     // Check for direct openApp action first
-    if let actions = action.actions {
-      for actionItem in actions {
-        if actionItem.type == "openApp", let deeplinkUrl = actionItem.deeplinkUrl {
+    if let configData = try? JSONSerialization.data(withJSONObject: action),
+       let jsonDict = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
+       let actions = jsonDict["actions"] as? [[String: Any]] {
+
+      for actionDict in actions {
+        if let type = actionDict["type"] as? String,
+           type == "openApp",
+           let deeplinkUrl = actionDict["deeplinkUrl"] as? String {
+
           logger.log("🚀 Found openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
-          if let url = URL(string: deeplinkUrl) {
-            logger.log("📱 Using proper Shield Extension openURL")
-            self.openURL(url)
-            logger.log("✅ Shield Extension openURL called")
-          }
+
+          logger.log("📱 Using local notification approach")
+          sendLocalNotificationWithDeepLink(urlString: deeplinkUrl)
+          logger.log("✅ Local notification sent with deep link")
         }
       }
     }
