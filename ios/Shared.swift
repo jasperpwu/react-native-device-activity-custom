@@ -8,6 +8,7 @@
 import DeviceActivity
 import FamilyControls
 import Foundation
+import UserNotifications
 import ManagedSettings
 import UIKit
 import WebKit
@@ -112,12 +113,54 @@ func openUrl(urlString: String) {
     logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
 
-  // Additional fallback: Simple notification approach
+  // Try direct URL scheme launch
+  if let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+    logger.log("🚀 Trying direct launch for scheme: \(urlComponents.scheme ?? "unknown", privacy: .public)")
+  }
+
+  // Additional fallback: Local notification with deep link
   DispatchQueue.main.async {
-    logger.log("🔄 Attempting notification fallback")
-    // Send a notification to the main app to handle the URL opening
-    notifyAppWithName(name: "openURL:\(urlString)")
-    logger.log("📢 Notification sent to main app")
+    logger.log("🔄 Attempting local notification with deep link")
+    sendLocalNotificationWithDeepLink(urlString: urlString)
+    logger.log("📱 Local notification scheduled")
+  }
+}
+
+func sendLocalNotificationWithDeepLink(urlString: String) {
+  logger.log("📮 Creating local notification with URL: \(urlString, privacy: .public)")
+
+  let content = UNMutableNotificationContent()
+  content.title = "App Action Required"
+  content.body = "Tap to continue"
+  content.sound = .default
+
+  // Include the deep link URL in userInfo
+  content.userInfo = [
+    "deepLinkUrl": urlString,
+    "source": "shieldAction"
+  ]
+
+  // Set category for custom actions (optional)
+  content.categoryIdentifier = "DEEP_LINK_CATEGORY"
+
+  logger.log("🔔 Notification content created")
+
+  // Create immediate trigger
+  let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+
+  // Create request
+  let identifier = "deeplink_\(UUID().uuidString)"
+  let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+  logger.log("📋 Notification request created with ID: \(identifier, privacy: .public)")
+
+  // Schedule notification
+  UNUserNotificationCenter.current().add(request) { error in
+    if let error = error {
+      logger.log("❌ Failed to schedule notification: \(error.localizedDescription, privacy: .public)")
+    } else {
+      logger.log("✅ Local notification scheduled successfully")
+    }
   }
 }
 

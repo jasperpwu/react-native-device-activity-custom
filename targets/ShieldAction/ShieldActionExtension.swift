@@ -147,8 +147,15 @@ func handleShieldAction(
     if type == "openApp" {
       let finalUrl = deeplinkUrl ?? "device-activity://"
       logger.log("📱 Executing openApp with URL: \(finalUrl, privacy: .public)")
-      openUrl(urlString: finalUrl)
-      logger.log("✅ openApp completed")
+
+      // Use the proper Shield Extension openURL method
+      if let url = URL(string: finalUrl) {
+        logger.log("🚀 Using Shield Extension openURL")
+        self.openURL(url)
+        logger.log("✅ Shield Extension openURL called")
+      } else {
+        logger.log("❌ Failed to create URL from: \(finalUrl, privacy: .public)")
+      }
     }
 
     if type == "openUrlWithDispatch" {
@@ -274,6 +281,20 @@ class ShieldActionExtension: ShieldActionDelegate {
   ) {
     logger.log("🍎 Handle Application - action received")
     logger.log("🍎 Application token received")
+
+    // Check for direct openApp action first
+    if let actions = action.actions {
+      for actionItem in actions {
+        if actionItem.type == "openApp", let deeplinkUrl = actionItem.deeplinkUrl {
+          logger.log("🚀 Found openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
+          if let url = URL(string: deeplinkUrl) {
+            logger.log("📱 Using proper Shield Extension openURL")
+            self.openURL(url)
+            logger.log("✅ Shield Extension openURL called")
+          }
+        }
+      }
+    }
 
     handleAction(
       action: action,
