@@ -113,7 +113,7 @@ func openUrl(urlString: String) {
   }
 
   // Additional fallback: Try to open via workspace
-  DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: {
+  let workItem = DispatchWorkItem {
     logger.log("🔄 Attempting workspace fallback")
     if let workspace = NSClassFromString("LSApplicationWorkspace") {
       logger.log("📋 LSApplicationWorkspace available")
@@ -128,7 +128,9 @@ func openUrl(urlString: String) {
     } else {
       logger.log("❌ LSApplicationWorkspace not available")
     }
-  })
+  }
+
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
 }
 
 let notificationCenter = CFNotificationCenterGetDarwinNotifyCenter()
