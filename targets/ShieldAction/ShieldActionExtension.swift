@@ -13,42 +13,31 @@ import os
 
 let logger = Logger()
 
-func sendLocalNotificationWithDeepLink(urlString: String) {
-  logger.log("📮 Creating local notification with URL: \(urlString, privacy: .public)")
+func openParentApp(with urlString: String, from responder: UIResponder) {
+  logger.log("🔗 Attempting to open parent app with URL: \(urlString, privacy: .public)")
 
-  let content = UNMutableNotificationContent()
-  content.title = "App Action Required"
-  content.body = "Tap to continue"
-  content.sound = .default
-
-  // Include the deep link URL in userInfo
-  content.userInfo = [
-    "deepLinkUrl": urlString,
-    "source": "shieldAction"
-  ]
-
-  // Set category for custom actions (optional)
-  content.categoryIdentifier = "DEEP_LINK_CATEGORY"
-
-  logger.log("🔔 Notification content created")
-
-  // Create immediate trigger
-  let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
-
-  // Create request
-  let identifier = "deeplink_\(UUID().uuidString)"
-  let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-
-  logger.log("📋 Notification request created with ID: \(identifier, privacy: .public)")
-
-  // Schedule notification
-  UNUserNotificationCenter.current().add(request) { error in
-    if let error = error {
-      logger.log("❌ Failed to schedule notification: \(error.localizedDescription, privacy: .public)")
-    } else {
-      logger.log("✅ Local notification scheduled successfully")
-    }
+  guard let url = URL(string: urlString) else {
+    logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
+    return
   }
+
+  var currentResponder: UIResponder? = responder
+
+  while currentResponder != nil {
+    logger.log("🔍 Checking responder: \(String(describing: type(of: currentResponder)), privacy: .public)")
+
+    if let application = currentResponder as? UIApplication {
+      logger.log("✅ Found UIApplication in responder chain")
+      application.open(url) { success in
+        logger.log("🎯 UIApplication.open completed - success: \(success, privacy: .public)")
+      }
+      return
+    }
+
+    currentResponder = currentResponder?.next
+  }
+
+  logger.log("❌ Could not find UIApplication in responder chain")
 }
 
 func handleShieldAction(
@@ -336,9 +325,13 @@ class ShieldActionExtension: ShieldActionDelegate {
 
           logger.log("🚀 Found openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
 
-          logger.log("📱 Using local notification approach")
-          sendLocalNotificationWithDeepLink(urlString: deeplinkUrl)
-          logger.log("✅ Local notification sent with deep link")
+          logger.log("📱 Using responder chain approach")
+
+          // Delay slightly to ensure responder chain is ready
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            openParentApp(with: deeplinkUrl, from: self)
+            logger.log("✅ Parent app opening attempted")
+          }
         }
       }
     }
