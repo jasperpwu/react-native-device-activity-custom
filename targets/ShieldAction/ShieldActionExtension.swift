@@ -11,9 +11,8 @@ import UIKit
 import UserNotifications
 import os
 
-private let logger = Logger()
-
 func openParentApp(with urlString: String) {
+  let logger = Logger()
   logger.log("🔗 Attempting to open parent app with URL: \(urlString, privacy: .public)")
 
   guard let url = URL(string: urlString) else {
@@ -21,9 +20,11 @@ func openParentApp(with urlString: String) {
     return
   }
 
-  logger.log("📱 Using UIApplication.shared.open")
-  UIApplication.shared.open(url) { success in
-    logger.log("🎯 UIApplication.open completed - success: \(success, privacy: .public)")
+  // Use extension context to open URLs - this is the proper way for extensions
+  let context = NSExtensionContext()
+  logger.log("📱 Using NSExtensionContext.open")
+  context.open(url) { success in
+    logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
 }
 
