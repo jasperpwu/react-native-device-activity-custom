@@ -241,6 +241,9 @@ func handleAction(
     webDomainToken: webdomainToken,
     categoryToken: categoryToken
   ) {
+    logger.log("✅ Found shield action config!")
+    let configKeys = Array(shieldActionConfig.keys).joined(separator: ", ")
+    logger.log("🔧 Config keys: \(configKeys, privacy: .public)")
     let actionButton = action == .primaryButtonPressed ? "primary" : "secondary"
     let familyActivitySelectionId = getPossibleFamilyActivitySelectionIds(
       applicationToken: applicationToken,
@@ -276,9 +279,12 @@ func handleAction(
         completionHandler(response)
       }
     } else {
+      logger.log("❌ No action config found for button: \(actionButton, privacy: .public)")
       completionHandler(.close)
     }
   } else {
+    logger.log("❌ No shield action config found at all!")
+    logger.log("🔍 Checked keys: \(SHIELD_ACTIONS_FOR_SELECTION_PREFIX, privacy: .public) and \(SHIELD_ACTIONS_KEY, privacy: .public)")
     completionHandler(.close)
   }
 }
@@ -293,6 +299,17 @@ class ShieldActionExtension: ShieldActionDelegate {
   ) {
     logger.log("🍎 Handle Application - action received")
     logger.log("🍎 Application token received")
+    logger.log("🔍 Action type: \(action == .primaryButtonPressed ? "primary" : "secondary", privacy: .public)")
+
+    // Log if we have any shield actions configured
+    let fallbackConfig = userDefaults?.dictionary(forKey: SHIELD_ACTIONS_KEY)
+    let hasFallbackConfig = fallbackConfig != nil
+    logger.log("📋 Has fallback shield actions config: \(hasFallbackConfig, privacy: .public)")
+
+    if let config = fallbackConfig {
+      let configKeys = Array(config.keys).joined(separator: ", ")
+      logger.log("📋 Fallback config keys: \(configKeys, privacy: .public)")
+    }
 
     // Check for direct openApp action first
     if let configData = try? JSONSerialization.data(withJSONObject: action),
