@@ -311,29 +311,10 @@ class ShieldActionExtension: ShieldActionDelegate {
       logger.log("📋 Fallback config keys: \(configKeys, privacy: .public)")
     }
 
-    // Check for direct openApp action first
-    if let configData = try? JSONSerialization.data(withJSONObject: action),
-       let jsonDict = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
-       let actions = jsonDict["actions"] as? [[String: Any]] {
+    // Action parameter is just an enum (.primaryButtonPressed or .secondaryButtonPressed)
+    // The actual configuration is retrieved in handleAction() from UserDefaults
 
-      for actionDict in actions {
-        if let type = actionDict["type"] as? String,
-           type == "openApp",
-           let deeplinkUrl = actionDict["deeplinkUrl"] as? String {
-
-          logger.log("🚀 Found openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
-
-          logger.log("📱 Using responder chain approach")
-
-          // Delay slightly to ensure UI is ready
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            openParentApp(with: deeplinkUrl)
-            logger.log("✅ Parent app opening attempted")
-          }
-        }
-      }
-    }
-
+    logger.log("🔄 About to call handleAction")
     handleAction(
       action: action,
       completionHandler: { response in
