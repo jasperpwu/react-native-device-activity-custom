@@ -11,9 +11,9 @@ import UIKit
 import UserNotifications
 import os
 
-let logger = Logger()
+private let logger = Logger()
 
-func openParentApp(with urlString: String, from responder: UIResponder) {
+func openParentApp(with urlString: String) {
   logger.log("🔗 Attempting to open parent app with URL: \(urlString, privacy: .public)")
 
   guard let url = URL(string: urlString) else {
@@ -21,23 +21,10 @@ func openParentApp(with urlString: String, from responder: UIResponder) {
     return
   }
 
-  var currentResponder: UIResponder? = responder
-
-  while currentResponder != nil {
-    logger.log("🔍 Checking responder: \(String(describing: type(of: currentResponder)), privacy: .public)")
-
-    if let application = currentResponder as? UIApplication {
-      logger.log("✅ Found UIApplication in responder chain")
-      application.open(url) { success in
-        logger.log("🎯 UIApplication.open completed - success: \(success, privacy: .public)")
-      }
-      return
-    }
-
-    currentResponder = currentResponder?.next
+  logger.log("📱 Using UIApplication.shared.open")
+  UIApplication.shared.open(url) { success in
+    logger.log("🎯 UIApplication.open completed - success: \(success, privacy: .public)")
   }
-
-  logger.log("❌ Could not find UIApplication in responder chain")
 }
 
 func handleShieldAction(
@@ -171,32 +158,25 @@ func handleShieldAction(
     if type == "openUrl" {
       let openUrlStr = url ?? "device-activity://"
       logger.log("🌐 Executing openUrl with: \(openUrlStr, privacy: .public)")
-      openUrl(urlString: openUrlStr)
+      openParentApp(with: openUrlStr)
       logger.log("✅ openUrl completed")
     }
 
     if type == "openApp" {
       let finalUrl = deeplinkUrl ?? "device-activity://"
       logger.log("📱 Executing openApp with URL: \(finalUrl, privacy: .public)")
-
-      // Use the proper Shield Extension openURL method
-      if let url = URL(string: finalUrl) {
-        logger.log("🚀 Using Shield Extension openURL")
-        self.openURL(url)
-        logger.log("✅ Shield Extension openURL called")
-      } else {
-        logger.log("❌ Failed to create URL from: \(finalUrl, privacy: .public)")
-      }
+      openParentApp(with: finalUrl)
+      logger.log("✅ openApp completed")
     }
 
     if type == "openUrlWithDispatch" {
       logger.log("🔄 Executing openUrlWithDispatch")
       let dispatchUrl = url ?? "device-activity://"
-      DispatchQueue.main.async(execute: {
+      DispatchQueue.main.async {
         logger.log("🔄 Inside dispatch queue, opening URL: \(dispatchUrl, privacy: .public)")
-        openUrl(urlString: dispatchUrl)
+        openParentApp(with: dispatchUrl)
         logger.log("✅ openUrlWithDispatch completed")
-      })
+      }
     }
 
     if type == "sendNotification" {
@@ -327,9 +307,9 @@ class ShieldActionExtension: ShieldActionDelegate {
 
           logger.log("📱 Using responder chain approach")
 
-          // Delay slightly to ensure responder chain is ready
+          // Delay slightly to ensure UI is ready
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            openParentApp(with: deeplinkUrl, from: self)
+            openParentApp(with: deeplinkUrl)
             logger.log("✅ Parent app opening attempted")
           }
         }
