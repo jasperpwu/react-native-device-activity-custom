@@ -55,6 +55,126 @@ func convertToUniversalLink(_ customUrl: String) -> String {
   return "https://bittersweet.app/unlock"
 }
 
+// MARK: - Distinct App Opening Methods
+
+/// Opens app using bundle ID with LSApplicationWorkspace (the proven working method)
+func openAppWithBundleId(bundleId: String) -> Bool {
+  logger.log("🚀 openAppWithBundleId: \(bundleId, privacy: .public)")
+
+  guard let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type else {
+    logger.log("❌ LSApplicationWorkspace class not found")
+    return false
+  }
+
+  guard let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue() else {
+    logger.log("❌ LSApplicationWorkspace instance not created")
+    return false
+  }
+
+  let startTime = Date()
+  let result = workspace.perform(NSSelectorFromString("openApplicationWithBundleID:"), with: bundleId)
+  let duration = Date().timeIntervalSince(startTime)
+
+  logger.log("🎯 openApplicationWithBundleID result: \(String(describing: result), privacy: .public) (took \(duration, privacy: .public)s)")
+
+  // The working method typically takes 8+ seconds and returns nil, but still works
+  if duration > 8.0 {
+    logger.log("✅ Slow execution detected - likely successful")
+    return true
+  } else if duration < 1.0 {
+    logger.log("⚡ Fast execution - likely successful")
+    return true
+  }
+
+  return result != nil
+}
+
+/// Opens app using URL with LSApplicationWorkspace openSensitiveURL
+func openAppWithUrl(urlString: String) -> Bool {
+  logger.log("🚀 openAppWithUrl: \(urlString, privacy: .public)")
+
+  guard let url = URL(string: urlString) else {
+    logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
+    return false
+  }
+
+  guard let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type else {
+    logger.log("❌ LSApplicationWorkspace class not found")
+    return false
+  }
+
+  guard let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue() else {
+    logger.log("❌ LSApplicationWorkspace instance not created")
+    return false
+  }
+
+  let result = workspace.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+  let success = result != nil
+  logger.log("🎯 openSensitiveURL result: \(String(describing: result), privacy: .public) - success: \(success)")
+
+  return success
+}
+
+/// Opens app using NSExtensionContext
+func openAppWithContext(urlString: String) -> Bool {
+  logger.log("🚀 openAppWithContext: \(urlString, privacy: .public)")
+
+  guard let url = URL(string: urlString) else {
+    logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
+    return false
+  }
+
+  let context = NSExtensionContext()
+  var success = false
+  let semaphore = DispatchSemaphore(value: 0)
+
+  context.open(url) { result in
+    success = result
+    logger.log("🎯 NSExtensionContext open result: \(result)")
+    semaphore.signal()
+  }
+
+  // Wait up to 2 seconds for the result
+  let timeout = semaphore.wait(timeout: .now() + 2.0)
+  if timeout == .timedOut {
+    logger.log("⏰ NSExtensionContext open timed out")
+    return false
+  }
+
+  return success
+}
+
+/// Opens app using dispatch + NSExtensionContext
+func openAppWithDispatch(urlString: String) -> Bool {
+  logger.log("🚀 openAppWithDispatch: \(urlString, privacy: .public)")
+
+  guard let url = URL(string: urlString) else {
+    logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
+    return false
+  }
+
+  var success = false
+  let semaphore = DispatchSemaphore(value: 0)
+
+  DispatchQueue.main.async {
+    let context = NSExtensionContext()
+    context.open(url) { result in
+      success = result
+      logger.log("🎯 Dispatched NSExtensionContext open result: \(result)")
+      semaphore.signal()
+    }
+  }
+
+  // Wait up to 2 seconds for the result
+  let timeout = semaphore.wait(timeout: .now() + 2.0)
+  if timeout == .timedOut {
+    logger.log("⏰ Dispatched NSExtensionContext open timed out")
+    return false
+  }
+
+  return success
+}
+
 @available(iOS 15.0, *)
 func updateShield(shieldId: String?, triggeredBy: String?, activitySelectionId: String?) {
   let shieldId = shieldId ?? "default"
@@ -291,51 +411,35 @@ func executeGenericAction(
     clearWhitelist()
   } else if type == "disableBlockAllMode" {
     disableBlockAllMode(triggeredBy: triggeredBy)
-  } else if type == "openApp" {
-    let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
-    logger.log("🚀 Executing openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
-
-    // Try multiple methods to bypass iOS restrictions
-
-    // Method 1: Direct LSApplicationWorkspace (private API but might work)
-    logger.log("🔧 Trying LSApplicationWorkspace approach")
-    userDefaults?.set("Trying LSApplicationWorkspace", forKey: "debugStatus")
-
-    if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
-      logger.log("✅ LSApplicationWorkspace class found!")
-      userDefaults?.set("LSApplicationWorkspace class found!", forKey: "debugStatus")
-
-      let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
-      logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
-
-      if let url = URL(string: deeplinkUrl) {
-        let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
-        logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
-        userDefaults?.set("LSApplicationWorkspace result: \(String(describing: result))", forKey: "debugStatus")
-      }
+  } else if type == "openAppWithBundleId" {
+    if let bundleId = action["bundleId"] as? String {
+      let success = openAppWithBundleId(bundleId: bundleId)
+      logger.log("🎯 openAppWithBundleId result: \(success)")
     } else {
-      logger.log("❌ LSApplicationWorkspace class not found")
-      userDefaults?.set("LSApplicationWorkspace class NOT found", forKey: "debugStatus")
+      logger.log("❌ Missing bundleId for openAppWithBundleId action")
     }
-
-    userDefaults?.synchronize()
-
-    // Method 2: Try extension context approach with delay
-    logger.log("🔧 Trying NSExtensionContext with delay")
-    if let url = URL(string: deeplinkUrl) {
-      let context = NSExtensionContext()
-
-      // Add a longer delay to see if that helps with timing
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-        context.open(url) { success in
-          logger.log("🎯 NSExtensionContext delayed open - success: \(success, privacy: .public)")
-        }
-      }
-      logger.log("✅ NSExtensionContext scheduled")
+  } else if type == "openAppWithUrl" {
+    let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
+    let success = openAppWithUrl(urlString: deeplinkUrl)
+    logger.log("🎯 openAppWithUrl result: \(success)")
+  } else if type == "openAppWithContext" {
+    let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
+    let success = openAppWithContext(urlString: deeplinkUrl)
+    logger.log("🎯 openAppWithContext result: \(success)")
+  } else if type == "openAppWithDispatch" {
+    let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
+    let success = openAppWithDispatch(urlString: deeplinkUrl)
+    logger.log("🎯 openAppWithDispatch result: \(success)")
+  } else if type == "openApp" {
+    // Legacy support - use the proven working method by default
+    if let bundleId = action["bundleId"] as? String {
+      let success = openAppWithBundleId(bundleId: bundleId)
+      logger.log("🎯 Legacy openApp with bundleId result: \(success)")
+    } else {
+      let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
+      let success = openAppWithUrl(urlString: deeplinkUrl)
+      logger.log("🎯 Legacy openApp with URL result: \(success)")
     }
-
-    // Give the private API methods time to work without interference
-    sleep(ms: 1000)
   } else if type == "enableBlockAllMode" {
     updateShield(
       shieldId: action["shieldId"] as? String,

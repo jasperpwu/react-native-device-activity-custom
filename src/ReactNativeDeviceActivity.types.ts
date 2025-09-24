@@ -266,6 +266,22 @@ export type Action =
       deeplinkUrl?: string;
     } & CommonTypeParams)
   | ({
+      type: "openAppWithBundleId";
+      bundleId: string;
+    } & CommonTypeParams)
+  | ({
+      type: "openAppWithUrl";
+      deeplinkUrl: string;
+    } & CommonTypeParams)
+  | ({
+      type: "openAppWithContext";
+      deeplinkUrl: string;
+    } & CommonTypeParams)
+  | ({
+      type: "openAppWithDispatch";
+      deeplinkUrl: string;
+    } & CommonTypeParams)
+  | ({
       type: "sendHttpRequest";
       url: string;
       options?: {

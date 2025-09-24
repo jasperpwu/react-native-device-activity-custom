@@ -11,54 +11,6 @@ import UIKit
 import UserNotifications
 import os
 
-func openParentApp(with urlString: String) {
-  let logger = Logger()
-  logger.log("🚨🚨🚨 FUNCTION ENTRY - openParentApp called with: \(urlString, privacy: .public)")
-
-  logger.log("🚨🚨🚨 STEP 1 - About to create URL")
-  guard let url = URL(string: urlString) else {
-    logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
-    return
-  }
-  logger.log("🚨🚨🚨 STEP 2 - URL created successfully: \(url, privacy: .public)")
-
-  // Method 1: Try LSApplicationWorkspace (private API) with timeout
-  logger.log("🚨🚨🚨 STEP 3 - About to try LSApplicationWorkspace")
-
-  DispatchQueue.global(qos: .userInitiated).async {
-    logger.log("🚨🚨🚨 STEP 4 - Inside background thread")
-    logger.log("🔧 LSApplicationWorkspace on background thread")
-
-    if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
-      logger.log("✅ LSApplicationWorkspace class found!")
-
-      let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
-      logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
-
-      let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
-      logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
-    } else {
-      logger.log("❌ LSApplicationWorkspace class not found")
-    }
-
-    logger.log("🔧 LSApplicationWorkspace attempt completed")
-  }
-
-  // Method 2: Try NSExtensionContext as backup
-  logger.log("🚨🚨🚨 STEP 5 - About to try NSExtensionContext")
-  let context = NSExtensionContext()
-  logger.log("🚨🚨🚨 STEP 6 - NSExtensionContext created")
-
-  context.open(url) { success in
-    logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
-  }
-  logger.log("🚨🚨🚨 STEP 7 - NSExtensionContext.open called")
-
-  // Give the private API methods time to work without interference
-  logger.log("🚨🚨🚨 STEP 8 - About to sleep")
-  sleep(100)  // Reduced sleep time
-  logger.log("🚨🚨🚨 STEP 9 - Sleep completed, function ending")
-}
 
 func handleShieldAction(
   configForSelectedAction: [String: Any],
@@ -86,46 +38,19 @@ func handleShieldAction(
 
       // Check if this is an openApp action and handle it directly
       if let actionType = action["type"] as? String, actionType == "openApp" {
-        let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
-        logger.log("🚨 FOUND OPENAPP ACTION IN NEW SYSTEM: \(deeplinkUrl, privacy: .public)")
-
-        // Do everything inline to avoid function call issues
-        logger.log("🚨🚨🚨 INLINE START - processing URL: \(deeplinkUrl, privacy: .public)")
-
-        guard let url = URL(string: deeplinkUrl) else {
-          logger.log("❌ Invalid URL string: \(deeplinkUrl, privacy: .public)")
-          return .close
-        }
-
-        logger.log("✅ URL created: \(url, privacy: .public)")
-
-        // Try opening the parent app with deep link using the working method
-        logger.log("🚀 Trying to open parent app (which should NOT be blocked)")
-        if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
-          logger.log("✅ LSApplicationWorkspace class found!")
-          let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
-          logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
-
-          // Use ONLY the method that actually worked: openApplicationWithBundleID
-          logger.log("🔧 USING THE WORKING METHOD: openApplicationWithBundleID")
-          let startTime = Date()
-          let result = workspace?.perform(NSSelectorFromString("openApplicationWithBundleID:"), with: "com.path2us.bittersweet")
-          let duration = Date().timeIntervalSince(startTime)
-          logger.log("🎯 openApplicationWithBundleID result: \(String(describing: result), privacy: .public) (took \(duration, privacy: .public) seconds)")
-
-          if duration > 8.0 {
-            logger.log("🐌 Method was SLOW but this is the one that worked before!")
-            logger.log("🎉 App should be opening now (even though result shows nil)")
-          } else if duration < 1.0 {
-            logger.log("⚡ Method was FAST - likely successful!")
-          }
-
-          logger.log("✅ Used the proven working method!")
+        if let bundleId = action["bundleId"] as? String {
+          logger.log("🚀 Using openAppWithBundleId with: \(bundleId, privacy: .public)")
+          let success = openAppWithBundleId(bundleId: bundleId)
+          logger.log("🎯 openAppWithBundleId result: \(success)")
+        } else if let deeplinkUrl = action["deeplinkUrl"] as? String {
+          logger.log("🚀 Using openAppWithUrl with: \(deeplinkUrl, privacy: .public)")
+          let success = openAppWithUrl(urlString: deeplinkUrl)
+          logger.log("🎯 openAppWithUrl result: \(success)")
         } else {
-          logger.log("❌ LSApplicationWorkspace class not found")
+          logger.log("🚀 Using default bundle ID")
+          let success = openAppWithBundleId(bundleId: "com.path2us.bittersweet")
+          logger.log("🎯 openAppWithBundleId (default) result: \(success)")
         }
-
-        logger.log("🚨🚨🚨 INLINE COMPLETED")
       } else {
         executeGenericAction(
           action: action,
@@ -234,31 +159,7 @@ func handleShieldAction(
     let deeplinkStr = deeplinkUrl ?? "nil"
     logger.log("🔍 Extracted values - url: \(urlStr, privacy: .public), deeplinkUrl: \(deeplinkStr, privacy: .public)")
 
-    if type == "openUrl" {
-      let openUrlStr = url ?? "device-activity://"
-      logger.log("🌐 Executing openUrl with: \(openUrlStr, privacy: .public)")
-      openParentApp(with: openUrlStr)
-      logger.log("✅ openUrl completed")
-    }
-
-    if type == "openApp" {
-      let finalUrl = deeplinkUrl ?? "device-activity://"
-      logger.log("📱 Executing openApp with URL: \(finalUrl, privacy: .public)")
-      logger.log("🚨 ABOUT TO CALL openParentApp function")
-      openParentApp(with: finalUrl)
-      logger.log("🚨 RETURNED FROM openParentApp function")
-      logger.log("✅ openApp completed")
-    }
-
-    if type == "openUrlWithDispatch" {
-      logger.log("🔄 Executing openUrlWithDispatch")
-      let dispatchUrl = url ?? "device-activity://"
-      DispatchQueue.main.async {
-        logger.log("🔄 Inside dispatch queue, opening URL: \(dispatchUrl, privacy: .public)")
-        openParentApp(with: dispatchUrl)
-        logger.log("✅ openUrlWithDispatch completed")
-      }
-    }
+    // Legacy types removed - use the new actions array format instead
 
     if type == "sendNotification" {
       logger.log("🔔 Executing sendNotification")
