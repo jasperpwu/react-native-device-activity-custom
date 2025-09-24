@@ -13,6 +13,7 @@ import os
 
 func openParentApp(with urlString: String) {
   let logger = Logger()
+  logger.log("🚨🚨🚨 INSIDE openParentApp FUNCTION - START 🚨🚨🚨")
   logger.log("🔗 Attempting to open parent app with URL: \(urlString, privacy: .public)")
 
   guard let url = URL(string: urlString) else {
@@ -55,6 +56,7 @@ func handleShieldAction(
   categoryToken: ActivityCategoryToken?
 ) -> ShieldActionResponse {
   let configKeys = Array(configForSelectedAction.keys).joined(separator: ", ")
+  logger.log("🚨🚨🚨 ENTERING handleShieldAction FUNCTION 🚨🚨🚨")
   logger.log("🔥 handleAction START - config keys: \(configKeys, privacy: .public)")
 
   // Log the full config (be careful with sensitive data)
@@ -185,7 +187,9 @@ func handleShieldAction(
     if type == "openApp" {
       let finalUrl = deeplinkUrl ?? "device-activity://"
       logger.log("📱 Executing openApp with URL: \(finalUrl, privacy: .public)")
+      logger.log("🚨 ABOUT TO CALL openParentApp function")
       openParentApp(with: finalUrl)
+      logger.log("🚨 RETURNED FROM openParentApp function")
       logger.log("✅ openApp completed")
     }
 
