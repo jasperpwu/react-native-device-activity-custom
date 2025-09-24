@@ -279,27 +279,13 @@ public class ReactNativeDeviceActivityModule: Module {
 
     let observer = NativeEventObserver(module: self)
 
-    // Setup Darwin notification listener for deep link URLs from Shield Action extensions
-    let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
-    let notificationName = "com.shieldaction.openurl" as CFString
-
-    CFNotificationCenterAddObserver(
-      darwinCenter,
-      Unmanaged.passUnretained(self).toOpaque(),
-      { (center, observer, name, object, userInfo) in
-        guard let observer = observer else { return }
-        let modulePtr = Unmanaged<ReactNativeDeviceActivityModule>.fromOpaque(observer)
-        let module = modulePtr.takeUnretainedValue()
-        module.handleDarwinNotification()
-      },
-      notificationName,
-      nil,
-      .deliverImmediately
-    )
-    logger.log("📡 Darwin notification listener setup complete")
-
     var watchActivitiesHandle: Cancellable?
     var onDeviceActivityDetectedHandle: Cancellable?
+
+    // Module lifecycle
+    OnCreate {
+      self.setupDarwinNotificationListener()
+    }
 
     Function("getAppGroupFileDirectory") {
 
@@ -840,6 +826,29 @@ public class ReactNativeDeviceActivityModule: Module {
 
       }
     }
+  }
+
+  // Setup Darwin notification listener
+  private func setupDarwinNotificationListener() {
+    logger.log("📡 Setting up Darwin notification listener")
+
+    let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
+    let notificationName = "com.shieldaction.openurl" as CFString
+
+    CFNotificationCenterAddObserver(
+      darwinCenter,
+      Unmanaged.passUnretained(self).toOpaque(),
+      { (center, observer, name, object, userInfo) in
+        guard let observer = observer else { return }
+        let modulePtr = Unmanaged<ReactNativeDeviceActivityModule>.fromOpaque(observer)
+        let module = modulePtr.takeUnretainedValue()
+        module.handleDarwinNotification()
+      },
+      notificationName,
+      nil,
+      .deliverImmediately
+    )
+    logger.log("✅ Darwin notification listener setup complete")
   }
 
   // Handle Darwin notification from Shield Action extension
