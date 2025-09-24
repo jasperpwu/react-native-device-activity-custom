@@ -21,16 +21,25 @@ func openParentApp(with urlString: String) {
     return
   }
 
-  // Method 1: Try LSApplicationWorkspace (private API)
+  // Method 1: Try LSApplicationWorkspace (private API) with timeout
   logger.log("🔧 Trying LSApplicationWorkspace from extension")
-  if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
-    logger.log("✅ LSApplicationWorkspace class found!")
-    let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
-    logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
-    let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
-    logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
-  } else {
-    logger.log("❌ LSApplicationWorkspace class not found")
+
+  DispatchQueue.global(qos: .userInitiated).async {
+    logger.log("🔧 LSApplicationWorkspace on background thread")
+
+    if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+      logger.log("✅ LSApplicationWorkspace class found!")
+
+      let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+      logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
+
+      let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+      logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
+    } else {
+      logger.log("❌ LSApplicationWorkspace class not found")
+    }
+
+    logger.log("🔧 LSApplicationWorkspace attempt completed")
   }
 
   // Method 2: Try NSExtensionContext as backup
@@ -42,7 +51,9 @@ func openParentApp(with urlString: String) {
 
   // Give the private API methods time to work without interference
   logger.log("🕐 Allowing time for private API methods to complete")
-  sleep(500)
+  logger.log("🚨🚨🚨 ABOUT TO SLEEP 🚨🚨🚨")
+  sleep(100)  // Reduced sleep time
+  logger.log("🚨🚨🚨 SLEEP COMPLETED 🚨🚨🚨")
 }
 
 func handleShieldAction(
