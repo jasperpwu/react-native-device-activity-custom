@@ -293,34 +293,38 @@ func executeGenericAction(
     let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
     logger.log("🚀 Executing openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
 
-    // Convert custom URL scheme to Universal Link format
-    // Example: bittersweet-mobile://unlock?currentBalance=0 -> https://yourdomain.com/unlock?currentBalance=0
-    let universalLinkUrl = convertToUniversalLink(deeplinkUrl)
-    logger.log("🔄 Converted to Universal Link: \(universalLinkUrl, privacy: .public)")
+    // Try multiple methods to bypass iOS restrictions
 
-    // Method 1: Try Darwin notification to main app
-    logger.log("📡 Sending Darwin notification to main app")
-    let notificationName = "com.shieldaction.openurl" as CFString
-
-    // Store the Universal Link URL in UserDefaults for the main app to read
-    userDefaults?.set(universalLinkUrl, forKey: "pendingDeepLink")
-    userDefaults?.synchronize()
-
-    // Send Darwin notification
-    let center = CFNotificationCenterGetDarwinNotifyCenter()
-    CFNotificationCenterPostNotification(center, CFNotificationName(notificationName), nil, nil, true)
-    logger.log("✅ Darwin notification sent")
-
-    // Method 2: Try NSExtensionContext with Universal Link
-    let context = NSExtensionContext()
-    if let url = URL(string: universalLinkUrl) {
-      logger.log("📱 Trying NSExtensionContext with Universal Link")
-      context.open(url) { success in
-        logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
+    // Method 1: Direct LSApplicationWorkspace (private API but might work)
+    logger.log("🔧 Trying LSApplicationWorkspace approach")
+    if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+      let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+      if let url = URL(string: deeplinkUrl) {
+        let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+        logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
       }
     }
 
-    sleep(ms: 500)
+    // Method 2: Try opening through system service
+    logger.log("🔧 Trying performSelector approach")
+    if let url = URL(string: deeplinkUrl) {
+      let selector = NSSelectorFromString("openURL:")
+      if UIApplication.shared.responds(to: selector) {
+        _ = UIApplication.shared.perform(selector, with: url)
+        logger.log("✅ performSelector attempted")
+      }
+    }
+
+    // Method 3: Store in shared defaults and signal main app
+    logger.log("📡 Storing deep link for main app")
+    userDefaults?.set(deeplinkUrl, forKey: "pendingDeepLink")
+    userDefaults?.set(Date().timeIntervalSince1970, forKey: "pendingDeepLinkTimestamp")
+    userDefaults?.synchronize()
+
+    let center = CFNotificationCenterGetDarwinNotifyCenter()
+    CFNotificationCenterPostNotification(center, CFNotificationName("com.shieldaction.openurl" as CFString), nil, nil, true)
+
+    sleep(ms: 100)
   } else if type == "enableBlockAllMode" {
     updateShield(
       shieldId: action["shieldId"] as? String,
