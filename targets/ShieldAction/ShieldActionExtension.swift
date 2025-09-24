@@ -71,14 +71,24 @@ func handleShieldAction(
     for (index, action) in actions.enumerated() {
       let actionNumber = index + 1
       logger.log("▶️ Executing action \(actionNumber)/\(actionCount)")
-      executeGenericAction(
-        action: action,
-        placeholders: placeholders,
-        triggeredBy: "shieldAction",
-        applicationToken: applicationToken,
-        webdomainToken: webdomainToken,
-        categoryToken: categoryToken
-      )
+
+      // Check if this is an openApp action and handle it directly
+      if let actionType = action["type"] as? String, actionType == "openApp" {
+        let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
+        logger.log("🚨 FOUND OPENAPP ACTION IN NEW SYSTEM: \(deeplinkUrl, privacy: .public)")
+        logger.log("🚨 CALLING openParentApp DIRECTLY")
+        openParentApp(with: deeplinkUrl)
+        logger.log("🚨 RETURNED FROM openParentApp DIRECT CALL")
+      } else {
+        executeGenericAction(
+          action: action,
+          placeholders: placeholders,
+          triggeredBy: "shieldAction",
+          applicationToken: applicationToken,
+          webdomainToken: webdomainToken,
+          categoryToken: categoryToken
+        )
+      }
       logger.log("✅ Completed action \(actionNumber)")
     }
   } else {
