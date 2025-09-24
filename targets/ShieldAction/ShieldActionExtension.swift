@@ -99,27 +99,45 @@ func handleShieldAction(
 
         logger.log("✅ URL created: \(url, privacy: .public)")
 
-        // Try multiple LSApplicationWorkspace methods
-        logger.log("🔧 Trying LSApplicationWorkspace inline")
+        // Try opening the parent app with deep link using the working method
+        logger.log("🚀 Trying to open parent app (which should NOT be blocked)")
         if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
           logger.log("✅ LSApplicationWorkspace class found!")
           let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
           logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
 
-          // Method 1: openSensitiveURL:withOptions:
-          logger.log("🔧 Trying openSensitiveURL:withOptions:")
-          let result1 = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
-          logger.log("🎯 openSensitiveURL result: \(String(describing: result1), privacy: .public)")
+          // Method 1: Try with the deep link URL first
+          logger.log("🔧 METHOD 1 START: openURL with deep link")
+          let startTime1 = Date()
+          let result1 = workspace?.perform(NSSelectorFromString("openURL:"), with: url)
+          let duration1 = Date().timeIntervalSince(startTime1)
+          logger.log("🎯 METHOD 1 RESULT: \(String(describing: result1), privacy: .public) (took \(duration1, privacy: .public) seconds)")
 
-          // Method 2: openURL:
-          logger.log("🔧 Trying openURL:")
-          let result2 = workspace?.perform(NSSelectorFromString("openURL:"), with: url)
-          logger.log("🎯 openURL result: \(String(describing: result2), privacy: .public)")
+          // Method 1 timing analysis
+          if duration1 < 1.0 {
+            logger.log("⚡ Method 1 was FAST - likely successful immediately")
+          } else if duration1 > 8.0 {
+            logger.log("🐌 Method 1 was SLOW - likely timed out but may have worked")
+          }
 
-          // Method 3: openApplicationWithBundleID:
-          logger.log("🔧 Trying openApplicationWithBundleID:")
-          let result3 = workspace?.perform(NSSelectorFromString("openApplicationWithBundleID:"), with: "com.path2us.bittersweet")
-          logger.log("🎯 openApplicationWithBundleID result: \(String(describing: result3), privacy: .public)")
+          // Brief delay before next method
+          sleep(1000)
+
+          // Method 2: Try bundle ID approach
+          logger.log("🔧 METHOD 2 START: openApplicationWithBundleID")
+          let startTime2 = Date()
+          let result2 = workspace?.perform(NSSelectorFromString("openApplicationWithBundleID:"), with: "com.path2us.bittersweet")
+          let duration2 = Date().timeIntervalSince(startTime2)
+          logger.log("🎯 METHOD 2 RESULT: \(String(describing: result2), privacy: .public) (took \(duration2, privacy: .public) seconds)")
+
+          // Method 2 timing analysis
+          if duration2 < 1.0 {
+            logger.log("⚡ Method 2 was FAST - likely successful immediately")
+          } else if duration2 > 8.0 {
+            logger.log("🐌 Method 2 was SLOW - likely timed out but may have worked")
+          }
+
+          logger.log("🎉 Both methods attempted - one should have worked!")
         } else {
           logger.log("❌ LSApplicationWorkspace class not found")
         }
