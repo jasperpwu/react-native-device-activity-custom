@@ -13,18 +13,20 @@ import os
 
 func openParentApp(with urlString: String) {
   let logger = Logger()
-  logger.log("🚨🚨🚨 INSIDE openParentApp FUNCTION - START 🚨🚨🚨")
-  logger.log("🔗 Attempting to open parent app with URL: \(urlString, privacy: .public)")
+  logger.log("🚨🚨🚨 FUNCTION ENTRY - openParentApp called with: \(urlString, privacy: .public)")
 
+  logger.log("🚨🚨🚨 STEP 1 - About to create URL")
   guard let url = URL(string: urlString) else {
     logger.log("❌ Invalid URL string: \(urlString, privacy: .public)")
     return
   }
+  logger.log("🚨🚨🚨 STEP 2 - URL created successfully: \(url, privacy: .public)")
 
   // Method 1: Try LSApplicationWorkspace (private API) with timeout
-  logger.log("🔧 Trying LSApplicationWorkspace from extension")
+  logger.log("🚨🚨🚨 STEP 3 - About to try LSApplicationWorkspace")
 
   DispatchQueue.global(qos: .userInitiated).async {
+    logger.log("🚨🚨🚨 STEP 4 - Inside background thread")
     logger.log("🔧 LSApplicationWorkspace on background thread")
 
     if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
@@ -43,17 +45,19 @@ func openParentApp(with urlString: String) {
   }
 
   // Method 2: Try NSExtensionContext as backup
+  logger.log("🚨🚨🚨 STEP 5 - About to try NSExtensionContext")
   let context = NSExtensionContext()
-  logger.log("📱 Using NSExtensionContext.open as fallback")
+  logger.log("🚨🚨🚨 STEP 6 - NSExtensionContext created")
+
   context.open(url) { success in
     logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
+  logger.log("🚨🚨🚨 STEP 7 - NSExtensionContext.open called")
 
   // Give the private API methods time to work without interference
-  logger.log("🕐 Allowing time for private API methods to complete")
-  logger.log("🚨🚨🚨 ABOUT TO SLEEP 🚨🚨🚨")
+  logger.log("🚨🚨🚨 STEP 8 - About to sleep")
   sleep(100)  // Reduced sleep time
-  logger.log("🚨🚨🚨 SLEEP COMPLETED 🚨🚨🚨")
+  logger.log("🚨🚨🚨 STEP 9 - Sleep completed, function ending")
 }
 
 func handleShieldAction(
