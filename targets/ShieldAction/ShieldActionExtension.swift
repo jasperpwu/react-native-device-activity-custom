@@ -88,9 +88,30 @@ func handleShieldAction(
       if let actionType = action["type"] as? String, actionType == "openApp" {
         let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
         logger.log("🚨 FOUND OPENAPP ACTION IN NEW SYSTEM: \(deeplinkUrl, privacy: .public)")
-        logger.log("🚨 CALLING openParentApp DIRECTLY")
-        openParentApp(with: deeplinkUrl)
-        logger.log("🚨 RETURNED FROM openParentApp DIRECT CALL")
+
+        // Do everything inline to avoid function call issues
+        logger.log("🚨🚨🚨 INLINE START - processing URL: \(deeplinkUrl, privacy: .public)")
+
+        guard let url = URL(string: deeplinkUrl) else {
+          logger.log("❌ Invalid URL string: \(deeplinkUrl, privacy: .public)")
+          return .close
+        }
+
+        logger.log("✅ URL created: \(url, privacy: .public)")
+
+        // Try LSApplicationWorkspace inline
+        logger.log("🔧 Trying LSApplicationWorkspace inline")
+        if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+          logger.log("✅ LSApplicationWorkspace class found!")
+          let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+          logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
+          let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+          logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
+        } else {
+          logger.log("❌ LSApplicationWorkspace class not found")
+        }
+
+        logger.log("🚨🚨🚨 INLINE COMPLETED")
       } else {
         executeGenericAction(
           action: action,
