@@ -40,12 +40,9 @@ func openParentApp(with urlString: String) {
     logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
 
-  // Method 3: Also send Darwin notification as final backup
-  logger.log("📡 Sending Darwin notification as additional backup")
-  userDefaults?.set(urlString, forKey: "pendingDeepLink")
-  userDefaults?.synchronize()
-  let center = CFNotificationCenterGetDarwinNotifyCenter()
-  CFNotificationCenterPostNotification(center, CFNotificationName("com.shieldaction.openurl" as CFString), nil, nil, true)
+  // Give the private API methods time to work without interference
+  logger.log("🕐 Allowing time for private API methods to complete")
+  sleep(500)
 }
 
 func handleShieldAction(

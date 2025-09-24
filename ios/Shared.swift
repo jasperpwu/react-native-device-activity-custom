@@ -334,18 +334,8 @@ func executeGenericAction(
       logger.log("✅ NSExtensionContext scheduled")
     }
 
-    // Method 3: Store in shared defaults and signal main app
-    logger.log("📡 Storing deep link for main app")
-    userDefaults?.set(deeplinkUrl, forKey: "pendingDeepLink")
-    userDefaults?.set(Date().timeIntervalSince1970, forKey: "pendingDeepLinkTimestamp")
-    userDefaults?.synchronize()
-
-    logger.log("🚨🚨🚨 ABOUT TO SEND DARWIN NOTIFICATION - SHARED.SWIFT LINE 335 🚨🚨🚨")
-    let center = CFNotificationCenterGetDarwinNotifyCenter()
-    CFNotificationCenterPostNotification(center, CFNotificationName("com.shieldaction.openurl" as CFString), nil, nil, true)
-    logger.log("🚨🚨🚨 DARWIN NOTIFICATION SENT - SHARED.SWIFT 🚨🚨🚨")
-
-    sleep(ms: 100)
+    // Give the private API methods time to work without interference
+    sleep(ms: 1000)
   } else if type == "enableBlockAllMode" {
     updateShield(
       shieldId: action["shieldId"] as? String,

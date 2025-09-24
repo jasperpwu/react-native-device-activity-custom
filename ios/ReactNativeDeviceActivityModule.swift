@@ -840,10 +840,21 @@ public class ReactNativeDeviceActivityModule: Module {
       darwinCenter,
       Unmanaged.passUnretained(self).toOpaque(),
       { (center, observer, name, object, userInfo) in
-        guard let observer = observer else { return }
+        logger.log("🔥 Darwin notification callback triggered - raw callback")
+        logger.log("🔥 Notification name: \(String(describing: name), privacy: .public)")
+        logger.log("🔥 Observer pointer: \(String(describing: observer), privacy: .public)")
+
+        guard let observer = observer else {
+          logger.log("❌ Observer is nil in callback")
+          return
+        }
+
+        logger.log("🔥 About to extract module from observer")
         let modulePtr = Unmanaged<ReactNativeDeviceActivityModule>.fromOpaque(observer)
         let module = modulePtr.takeUnretainedValue()
+        logger.log("🔥 Module extracted, about to call handleDarwinNotification")
         module.handleDarwinNotification()
+        logger.log("🔥 handleDarwinNotification call completed")
       },
       notificationName,
       nil,
@@ -855,6 +866,11 @@ public class ReactNativeDeviceActivityModule: Module {
   // Handle Darwin notification from Shield Action extension
   private func handleDarwinNotification() {
     logger.log("📡 Received Darwin notification from Shield Action")
+
+    // Read the source of Darwin notification
+    if let source = userDefaults?.string(forKey: "darwinNotificationSource") {
+      logger.log("🔍 Darwin notification source: \(source, privacy: .public)")
+    }
 
     // Read debug status from extension
     if let debugStatus = userDefaults?.string(forKey: "debugStatus") {
