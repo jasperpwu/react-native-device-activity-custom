@@ -298,11 +298,15 @@ func executeGenericAction(
     // Method 1: Direct LSApplicationWorkspace (private API but might work)
     logger.log("🔧 Trying LSApplicationWorkspace approach")
     if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+      logger.log("✅ LSApplicationWorkspace class found!")
       let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+      logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
       if let url = URL(string: deeplinkUrl) {
         let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
         logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
       }
+    } else {
+      logger.log("❌ LSApplicationWorkspace class not found")
     }
 
     // Method 2: Try extension context approach with delay
