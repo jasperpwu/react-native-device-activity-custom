@@ -280,11 +280,11 @@ public class ReactNativeDeviceActivityModule: Module {
     let observer = NativeEventObserver(module: self)
 
     // Setup Darwin notification listener for deep link URLs from Shield Action extensions
-    let center = CFNotificationCenterGetDarwinNotifyCenter()
+    let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
     let notificationName = "com.shieldaction.openurl" as CFString
 
     CFNotificationCenterAddObserver(
-      center,
+      darwinCenter,
       Unmanaged.passUnretained(self).toOpaque(),
       { (center, observer, name, object, userInfo) in
         guard let observer = observer else { return }
