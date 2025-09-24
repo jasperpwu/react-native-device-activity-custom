@@ -269,7 +269,17 @@ func executeGenericAction(
     disableBlockAllMode(triggeredBy: triggeredBy)
   } else if type == "openApp" {
     let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
-    openUrl(urlString: deeplinkUrl)
+    logger.log("🚀 Executing openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
+
+    // Use NSExtensionContext for proper URL opening from extensions
+    let context = NSExtensionContext()
+    if let url = URL(string: deeplinkUrl) {
+      context.open(url) { success in
+        logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
+      }
+    } else {
+      logger.log("❌ Invalid URL for openApp: \(deeplinkUrl, privacy: .public)")
+    }
 
     sleep(ms: 1000)
   } else if type == "enableBlockAllMode" {
