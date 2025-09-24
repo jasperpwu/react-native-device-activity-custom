@@ -6,6 +6,7 @@ import Foundation
 import ManagedSettings
 import ManagedSettingsUI
 import os
+import UserNotifications
 
 struct DateComponentsFromJS: ExpoModulesCore.Record {
   @Field

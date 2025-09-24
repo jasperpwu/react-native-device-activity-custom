@@ -33,6 +33,28 @@ let logger = Logger(
 
 var task: URLSessionDataTask?
 
+// Convert custom URL scheme to Universal Link
+func convertToUniversalLink(_ customUrl: String) -> String {
+  // Extract path and query parameters from custom URL scheme
+  // Example: bittersweet-mobile://unlock?currentBalance=0
+  if let url = URL(string: customUrl),
+     let host = url.host,
+     let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+
+    let path = url.path.isEmpty ? "/" + host : url.path
+    let queryString = components.query != nil ? "?" + components.query! : ""
+
+    // Replace with your Universal Link domain
+    // You need to configure this domain in your app's Associated Domains
+    let universalLinkDomain = "https://bittersweet.app"  // Replace with your actual domain
+
+    return universalLinkDomain + path + queryString
+  }
+
+  // Fallback if URL parsing fails
+  return "https://bittersweet.app/unlock"
+}
+
 @available(iOS 15.0, *)
 func updateShield(shieldId: String?, triggeredBy: String?, activitySelectionId: String?) {
   let shieldId = shieldId ?? "default"
@@ -271,12 +293,17 @@ func executeGenericAction(
     let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
     logger.log("🚀 Executing openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
 
+    // Convert custom URL scheme to Universal Link format
+    // Example: bittersweet-mobile://unlock?currentBalance=0 -> https://yourdomain.com/unlock?currentBalance=0
+    let universalLinkUrl = convertToUniversalLink(deeplinkUrl)
+    logger.log("🔄 Converted to Universal Link: \(universalLinkUrl, privacy: .public)")
+
     // Method 1: Try Darwin notification to main app
     logger.log("📡 Sending Darwin notification to main app")
     let notificationName = "com.shieldaction.openurl" as CFString
 
-    // Store the URL in UserDefaults for the main app to read
-    userDefaults?.set(deeplinkUrl, forKey: "pendingDeepLink")
+    // Store the Universal Link URL in UserDefaults for the main app to read
+    userDefaults?.set(universalLinkUrl, forKey: "pendingDeepLink")
     userDefaults?.synchronize()
 
     // Send Darwin notification
@@ -284,10 +311,10 @@ func executeGenericAction(
     CFNotificationCenterPostNotification(center, CFNotificationName(notificationName), nil, nil, true)
     logger.log("✅ Darwin notification sent")
 
-    // Method 2: Fallback to NSExtensionContext (might not work but try anyway)
+    // Method 2: Try NSExtensionContext with Universal Link
     let context = NSExtensionContext()
-    if let url = URL(string: deeplinkUrl) {
-      logger.log("📱 Trying NSExtensionContext as fallback")
+    if let url = URL(string: universalLinkUrl) {
+      logger.log("📱 Trying NSExtensionContext with Universal Link")
       context.open(url) { success in
         logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
       }
