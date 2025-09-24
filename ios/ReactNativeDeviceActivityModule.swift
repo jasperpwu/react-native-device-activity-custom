@@ -279,6 +279,25 @@ public class ReactNativeDeviceActivityModule: Module {
 
     let observer = NativeEventObserver(module: self)
 
+    // Setup Darwin notification listener for deep link URLs from Shield Action extensions
+    let center = CFNotificationCenterGetDarwinNotifyCenter()
+    let notificationName = "com.shieldaction.openurl" as CFString
+
+    CFNotificationCenterAddObserver(
+      center,
+      Unmanaged.passUnretained(self).toOpaque(),
+      { (center, observer, name, object, userInfo) in
+        guard let observer = observer else { return }
+        let modulePtr = Unmanaged<ReactNativeDeviceActivityModule>.fromOpaque(observer)
+        let module = modulePtr.takeUnretainedValue()
+        module.handleDarwinNotification()
+      },
+      notificationName,
+      nil,
+      .deliverImmediately
+    )
+    logger.log("📡 Darwin notification listener setup complete")
+
     var watchActivitiesHandle: Cancellable?
     var onDeviceActivityDetectedHandle: Cancellable?
 
@@ -820,6 +839,37 @@ public class ReactNativeDeviceActivityModule: Module {
         view.model.headerText = prop
 
       }
+    }
+  }
+
+  // Handle Darwin notification from Shield Action extension
+  private func handleDarwinNotification() {
+    logger.log("📡 Received Darwin notification from Shield Action")
+
+    // Read the pending deep link URL from UserDefaults
+    if let pendingUrl = userDefaults?.string(forKey: "pendingDeepLink") {
+      logger.log("🔗 Found pending deep link: \(pendingUrl, privacy: .public)")
+
+      // Clear the pending URL
+      userDefaults?.removeObject(forKey: "pendingDeepLink")
+
+      // Open the URL using UIApplication (this works in main app)
+      DispatchQueue.main.async {
+        if let url = URL(string: pendingUrl) {
+          if UIApplication.shared.canOpenURL(url) {
+            logger.log("✅ Opening URL via UIApplication.shared")
+            UIApplication.shared.open(url) { success in
+              logger.log("🎯 URL opened - success: \(success, privacy: .public)")
+            }
+          } else {
+            logger.log("❌ UIApplication cannot open URL: \(pendingUrl, privacy: .public)")
+          }
+        } else {
+          logger.log("❌ Invalid URL format: \(pendingUrl, privacy: .public)")
+        }
+      }
+    } else {
+      logger.log("❌ No pending deep link found in UserDefaults")
     }
   }
 }

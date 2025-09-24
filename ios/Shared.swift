@@ -271,17 +271,29 @@ func executeGenericAction(
     let deeplinkUrl = action["deeplinkUrl"] as? String ?? "device-activity://"
     logger.log("🚀 Executing openApp action with deeplinkUrl: \(deeplinkUrl, privacy: .public)")
 
-    // Use NSExtensionContext for proper URL opening from extensions
+    // Method 1: Try Darwin notification to main app
+    logger.log("📡 Sending Darwin notification to main app")
+    let notificationName = "com.shieldaction.openurl" as CFString
+
+    // Store the URL in UserDefaults for the main app to read
+    userDefaults?.set(deeplinkUrl, forKey: "pendingDeepLink")
+    userDefaults?.synchronize()
+
+    // Send Darwin notification
+    let center = CFNotificationCenterGetDarwinNotifyCenter()
+    CFNotificationCenterPostNotification(center, CFNotificationName(notificationName), nil, nil, true)
+    logger.log("✅ Darwin notification sent")
+
+    // Method 2: Fallback to NSExtensionContext (might not work but try anyway)
     let context = NSExtensionContext()
     if let url = URL(string: deeplinkUrl) {
+      logger.log("📱 Trying NSExtensionContext as fallback")
       context.open(url) { success in
         logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
       }
-    } else {
-      logger.log("❌ Invalid URL for openApp: \(deeplinkUrl, privacy: .public)")
     }
 
-    sleep(ms: 1000)
+    sleep(ms: 500)
   } else if type == "enableBlockAllMode" {
     updateShield(
       shieldId: action["shieldId"] as? String,
