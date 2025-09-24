@@ -305,14 +305,18 @@ func executeGenericAction(
       }
     }
 
-    // Method 2: Try opening through system service
-    logger.log("🔧 Trying performSelector approach")
+    // Method 2: Try extension context approach with delay
+    logger.log("🔧 Trying NSExtensionContext with delay")
     if let url = URL(string: deeplinkUrl) {
-      let selector = NSSelectorFromString("openURL:")
-      if UIApplication.shared.responds(to: selector) {
-        _ = UIApplication.shared.perform(selector, with: url)
-        logger.log("✅ performSelector attempted")
+      let context = NSExtensionContext()
+
+      // Add a longer delay to see if that helps with timing
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        context.open(url) { success in
+          logger.log("🎯 NSExtensionContext delayed open - success: \(success, privacy: .public)")
+        }
       }
+      logger.log("✅ NSExtensionContext scheduled")
     }
 
     // Method 3: Store in shared defaults and signal main app
