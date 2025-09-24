@@ -202,7 +202,9 @@ func executeGenericAction(
   webdomainToken: WebDomainToken? = nil,
   categoryToken: ActivityCategoryToken? = nil
 ) {
+  logger.log("🚨🚨🚨 INSIDE executeGenericAction FUNCTION - SHARED.SWIFT 🚨🚨🚨")
   let type = action["type"] as? String
+  logger.log("🔍 Action type: \(type ?? "nil", privacy: .public)")
 
   if let sleepBefore = action["sleepBefore"] as? Int {
     sleep(ms: sleepBefore)
@@ -297,17 +299,26 @@ func executeGenericAction(
 
     // Method 1: Direct LSApplicationWorkspace (private API but might work)
     logger.log("🔧 Trying LSApplicationWorkspace approach")
+    userDefaults?.set("Trying LSApplicationWorkspace", forKey: "debugStatus")
+
     if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
       logger.log("✅ LSApplicationWorkspace class found!")
+      userDefaults?.set("LSApplicationWorkspace class found!", forKey: "debugStatus")
+
       let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
       logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
+
       if let url = URL(string: deeplinkUrl) {
         let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
         logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
+        userDefaults?.set("LSApplicationWorkspace result: \(String(describing: result))", forKey: "debugStatus")
       }
     } else {
       logger.log("❌ LSApplicationWorkspace class not found")
+      userDefaults?.set("LSApplicationWorkspace class NOT found", forKey: "debugStatus")
     }
+
+    userDefaults?.synchronize()
 
     // Method 2: Try extension context approach with delay
     logger.log("🔧 Trying NSExtensionContext with delay")
@@ -329,8 +340,10 @@ func executeGenericAction(
     userDefaults?.set(Date().timeIntervalSince1970, forKey: "pendingDeepLinkTimestamp")
     userDefaults?.synchronize()
 
+    logger.log("🚨🚨🚨 ABOUT TO SEND DARWIN NOTIFICATION - SHARED.SWIFT LINE 335 🚨🚨🚨")
     let center = CFNotificationCenterGetDarwinNotifyCenter()
     CFNotificationCenterPostNotification(center, CFNotificationName("com.shieldaction.openurl" as CFString), nil, nil, true)
+    logger.log("🚨🚨🚨 DARWIN NOTIFICATION SENT - SHARED.SWIFT 🚨🚨🚨")
 
     sleep(ms: 100)
   } else if type == "enableBlockAllMode" {

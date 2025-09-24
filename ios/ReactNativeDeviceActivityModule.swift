@@ -856,6 +856,11 @@ public class ReactNativeDeviceActivityModule: Module {
   private func handleDarwinNotification() {
     logger.log("📡 Received Darwin notification from Shield Action")
 
+    // Read debug status from extension
+    if let debugStatus = userDefaults?.string(forKey: "debugStatus") {
+      logger.log("🔍 Extension debug status: \(debugStatus, privacy: .public)")
+    }
+
     // Read the pending deep link URL from UserDefaults
     if let pendingUrl = userDefaults?.string(forKey: "pendingDeepLink") {
       logger.log("🔗 Found pending deep link: \(pendingUrl, privacy: .public)")
