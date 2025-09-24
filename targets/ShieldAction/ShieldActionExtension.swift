@@ -99,14 +99,27 @@ func handleShieldAction(
 
         logger.log("✅ URL created: \(url, privacy: .public)")
 
-        // Try LSApplicationWorkspace inline
+        // Try multiple LSApplicationWorkspace methods
         logger.log("🔧 Trying LSApplicationWorkspace inline")
         if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
           logger.log("✅ LSApplicationWorkspace class found!")
           let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
           logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
-          let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
-          logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
+
+          // Method 1: openSensitiveURL:withOptions:
+          logger.log("🔧 Trying openSensitiveURL:withOptions:")
+          let result1 = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+          logger.log("🎯 openSensitiveURL result: \(String(describing: result1), privacy: .public)")
+
+          // Method 2: openURL:
+          logger.log("🔧 Trying openURL:")
+          let result2 = workspace?.perform(NSSelectorFromString("openURL:"), with: url)
+          logger.log("🎯 openURL result: \(String(describing: result2), privacy: .public)")
+
+          // Method 3: openApplicationWithBundleID:
+          logger.log("🔧 Trying openApplicationWithBundleID:")
+          let result3 = workspace?.perform(NSSelectorFromString("openApplicationWithBundleID:"), with: "com.path2us.bittersweet")
+          logger.log("🎯 openApplicationWithBundleID result: \(String(describing: result3), privacy: .public)")
         } else {
           logger.log("❌ LSApplicationWorkspace class not found")
         }
