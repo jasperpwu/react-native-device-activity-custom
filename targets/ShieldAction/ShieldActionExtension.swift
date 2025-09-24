@@ -20,12 +20,31 @@ func openParentApp(with urlString: String) {
     return
   }
 
-  // Use extension context to open URLs - this is the proper way for extensions
+  // Method 1: Try LSApplicationWorkspace (private API)
+  logger.log("🔧 Trying LSApplicationWorkspace from extension")
+  if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+    logger.log("✅ LSApplicationWorkspace class found!")
+    let workspace = workspaceClass.perform(NSSelectorFromString("defaultWorkspace"))?.takeUnretainedValue()
+    logger.log("✅ LSApplicationWorkspace instance: \(String(describing: workspace), privacy: .public)")
+    let result = workspace?.perform(NSSelectorFromString("openSensitiveURL:withOptions:"), with: url, with: nil)
+    logger.log("🎯 LSApplicationWorkspace result: \(String(describing: result), privacy: .public)")
+  } else {
+    logger.log("❌ LSApplicationWorkspace class not found")
+  }
+
+  // Method 2: Try NSExtensionContext as backup
   let context = NSExtensionContext()
-  logger.log("📱 Using NSExtensionContext.open")
+  logger.log("📱 Using NSExtensionContext.open as fallback")
   context.open(url) { success in
     logger.log("🎯 Extension context open completed - success: \(success, privacy: .public)")
   }
+
+  // Method 3: Also send Darwin notification as final backup
+  logger.log("📡 Sending Darwin notification as additional backup")
+  userDefaults?.set(urlString, forKey: "pendingDeepLink")
+  userDefaults?.synchronize()
+  let center = CFNotificationCenterGetDarwinNotifyCenter()
+  CFNotificationCenterPostNotification(center, CFNotificationName("com.shieldaction.openurl" as CFString), nil, nil, true)
 }
 
 func handleShieldAction(
