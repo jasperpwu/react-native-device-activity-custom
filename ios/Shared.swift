@@ -57,9 +57,23 @@ func convertToUniversalLink(_ customUrl: String) -> String {
 
 // MARK: - Distinct App Opening Methods
 
-/// Opens app using bundle ID with LSApplicationWorkspace (the proven working method)
+/// Opens app using bundle ID with LSApplicationWorkspace (async version - no user blocking)
 func openAppWithBundleId(bundleId: String) -> Bool {
-  logger.log("🚀 openAppWithBundleId: \(bundleId, privacy: .public)")
+  logger.log("🚀 openAppWithBundleId: \(bundleId, privacy: .public) (async)")
+
+  // Execute the slow operation on a background queue so user doesn't have to wait
+  DispatchQueue.global(qos: .userInitiated).async {
+    let success = openAppWithBundleIdSync(bundleId: bundleId)
+    logger.log("🎯 Async app launch completed with result: \(success)")
+  }
+
+  // Return immediately - user experiences no delay
+  return true
+}
+
+/// Synchronous implementation - the original working method (private)
+private func openAppWithBundleIdSync(bundleId: String) -> Bool {
+  logger.log("🔧 openAppWithBundleIdSync: \(bundleId, privacy: .public)")
 
   guard let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type else {
     logger.log("❌ LSApplicationWorkspace class not found")
