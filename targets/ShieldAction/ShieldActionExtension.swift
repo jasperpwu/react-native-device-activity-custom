@@ -11,13 +11,31 @@ import UIKit
 import UserNotifications
 import os
 
+/// Writes communication data to UserDefaults for main app to read
+func writeShieldCommunicationToUserDefaults(
+  actionType: String,
+  bundleId: String?,
+  shieldId: String?
+) {
+  let communicationData: [String: Any] = [
+    "action": actionType,
+    "bundleId": bundleId ?? "unknown",
+    "shieldId": shieldId ?? "unknown",
+    "timestamp": Date().timeIntervalSince1970,
+    "source": "shieldExtension"
+  ]
+
+  userDefaults?.set(communicationData, forKey: "pendingMainAppAction")
+  logger.log("📡 Written shield communication data to UserDefaults: \(communicationData, privacy: .public)")
+}
 
 func handleShieldAction(
   configForSelectedAction: [String: Any],
   placeholders: [String: String?],
   applicationToken: ApplicationToken?,
   webdomainToken: WebDomainToken?,
-  categoryToken: ActivityCategoryToken?
+  categoryToken: ActivityCategoryToken?,
+  actionButton: String? = nil
 ) -> ShieldActionResponse {
   let configKeys = Array(configForSelectedAction.keys).joined(separator: ", ")
   logger.log("🚨🚨🚨 ENTERING handleShieldAction FUNCTION 🚨🚨🚨")
@@ -40,6 +58,14 @@ func handleShieldAction(
       if let actionType = action["type"] as? String, actionType == "openApp" {
         if let bundleId = action["bundleId"] as? String {
           logger.log("🚀 Using openAppWithBundleId with: \(bundleId, privacy: .public)")
+
+          // Write communication data to UserDefaults before opening app
+          writeShieldCommunicationToUserDefaults(
+            actionType: "\(actionButton ?? "unknown")ButtonTapped",
+            bundleId: bundleId,
+            shieldId: action["shieldId"] as? String
+          )
+
           let success = openAppWithBundleId(bundleId: bundleId)
           logger.log("🎯 openAppWithBundleId result: \(success)")
         } else if let deeplinkUrl = action["deeplinkUrl"] as? String {
@@ -52,14 +78,33 @@ func handleShieldAction(
           logger.log("🎯 openAppWithBundleId (default) result: \(success)")
         }
       } else {
-        executeGenericAction(
-          action: action,
-          placeholders: placeholders,
-          triggeredBy: "shieldAction",
-          applicationToken: applicationToken,
-          webdomainToken: webdomainToken,
-          categoryToken: categoryToken
-        )
+        // Handle openAppWithBundleId action type with communication
+        if let actionType = action["type"] as? String, actionType == "openAppWithBundleId" {
+          if let bundleId = action["bundleId"] as? String {
+            logger.log("🚀 Using openAppWithBundleId with: \(bundleId, privacy: .public)")
+
+            // Write communication data to UserDefaults before opening app
+            writeShieldCommunicationToUserDefaults(
+              actionType: "\(actionButton ?? "unknown")ButtonTapped",
+              bundleId: bundleId,
+              shieldId: action["shieldId"] as? String
+            )
+
+            let success = openAppWithBundleId(bundleId: bundleId)
+            logger.log("🎯 openAppWithBundleId result: \(success)")
+          } else {
+            logger.log("❌ Missing bundleId for openAppWithBundleId action")
+          }
+        } else {
+          executeGenericAction(
+            action: action,
+            placeholders: placeholders,
+            triggeredBy: "shieldAction",
+            applicationToken: applicationToken,
+            webdomainToken: webdomainToken,
+            categoryToken: categoryToken
+          )
+        }
       }
       logger.log("✅ Completed action \(actionNumber)")
     }
@@ -250,7 +295,8 @@ func handleAction(
         placeholders: placeholders,
         applicationToken: applicationToken,
         webdomainToken: webdomainToken,
-        categoryToken: categoryToken
+        categoryToken: categoryToken,
+        actionButton: actionButton
       )
       if let delay = configForSelectedAction["delay"] as? Double {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {

@@ -262,22 +262,27 @@ export type Action =
       payload: NotificationPayload;
     } & CommonTypeParams)
   | ({
+      /** @deprecated Legacy method - use openAppWithBundleId instead */
       type: "openApp";
       deeplinkUrl?: string;
     } & CommonTypeParams)
   | ({
+      /** Recommended method - proven to work reliably */
       type: "openAppWithBundleId";
       bundleId: string;
     } & CommonTypeParams)
   | ({
+      /** @experimental May not work reliably in all cases */
       type: "openAppWithUrl";
       deeplinkUrl: string;
     } & CommonTypeParams)
   | ({
+      /** @experimental May not work reliably in all cases */
       type: "openAppWithContext";
       deeplinkUrl: string;
     } & CommonTypeParams)
   | ({
+      /** @experimental May not work reliably in all cases */
       type: "openAppWithDispatch";
       deeplinkUrl: string;
     } & CommonTypeParams)
