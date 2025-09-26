@@ -990,9 +990,12 @@ func deserializeFamilyActivitySelection(familyActivitySelectionStr: String)
   var activitySelection = FamilyActivitySelection()
 
   let decoder = JSONDecoder()
-  let data = Data(base64Encoded: familyActivitySelectionStr)
+  guard let data = Data(base64Encoded: familyActivitySelectionStr) else {
+    logger.log("Invalid base64 string for familyActivitySelection: \(familyActivitySelectionStr, privacy: .public)")
+    return activitySelection
+  }
   do {
-    activitySelection = try decoder.decode(FamilyActivitySelection.self, from: data!)
+    activitySelection = try decoder.decode(FamilyActivitySelection.self, from: data)
   } catch {
     logger.log("decode error \(error.localizedDescription, privacy: .public)")
   }
