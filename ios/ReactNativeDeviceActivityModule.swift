@@ -459,9 +459,11 @@ public class ReactNativeDeviceActivityModule: Module {
       let decodedFamilyActivitySelections = familyActivitySelections.map {
         familyActivitySelection in
         let decoder = JSONDecoder()
-        let data = Data(base64Encoded: familyActivitySelection)
+        guard let data = Data(base64Encoded: familyActivitySelection) else {
+          return FamilyActivitySelection()
+        }
         do {
-          let activitySelection = try decoder.decode(FamilyActivitySelection.self, from: data!)
+          let activitySelection = try decoder.decode(FamilyActivitySelection.self, from: data)
           return activitySelection
         } catch {
           return FamilyActivitySelection()
