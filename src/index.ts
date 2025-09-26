@@ -650,6 +650,7 @@ export function isAvailable(): boolean {
 }
 
 export { DeviceActivitySelectionView, DeviceActivitySelectionViewPersisted };
+export { FamilyActivityIconsView } from './FamilyActivityIconsView';
 
 export type {
   DeviceActivitySelectionViewProps as ReactNativeDeviceActivityViewProps,
